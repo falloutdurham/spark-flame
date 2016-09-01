@@ -4,13 +4,13 @@
 
 This is _very_ rough way of generating flame graphs from Spark executors. But it's a starting point.
 
-* ansible-playbook -i inventory.ini spark-flame.playbook  --extra-vars 'pattern=[YARN_APP_ID]'
+* `ansible-playbook -i inventory.ini spark-flame.playbook  --extra-vars 'pattern=[YARN_APP_ID]'`
 
 * Mark your workers using [workers] in inventory.ini
 
 * Only works currently on YARN
 
-* Compile perf-map-agent and drop the attach-main.jar and libperfmap.so files into the 'files' directory. Also chuck in flamegraph.pl and stackcollapse-perf.pl from Brendan Gregg's FlameGraph repo. We generate the flame graphs server-side at the moment.
+* Compile [perf-map-agent](https://github.com/jrudolph/perf-map-agent) and drop the attach-main.jar and libperfmap.so files into the 'files' directory. Also chuck in flamegraph.pl and stackcollapse-perf.pl from Brendan Gregg's [FlameGraph](https://github.com/brendangregg/FlameGraph) repo. We generate the flame graphs server-side at the moment.
 
 * Make sure you pass ``--conf spark.executor.extraJavaOptions=-XX:+PreserveFr
 amePointer`` into either the spark-shell or spark-submit jobs so the executors preserve their frame pointer
@@ -21,7 +21,7 @@ amePointer`` into either the spark-shell or spark-submit jobs so the executors p
 
 * If there are multiple executors running on a node, it *should* collapse them all into a single graph, as the perf command is passed all the PIDs it finds.
 
-* Yes, you will need perf installed.
+* Yes, you will need `perf` installed.
 
 * Tested with Spark 2.0 on Google Dataproc (which seems to be running Debian 8.5 with a 3.16 kernel. So no fancy BPF stuff going on here!)
 
