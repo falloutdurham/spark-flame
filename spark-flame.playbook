@@ -1,0 +1,56 @@
+---
+- hosts: workers
+  vars:
+    user: yarn
+    pattern:  
+    perf_options: -ag -F 997
+    perf_time: 10
+  become: true
+  become_method: sudo
+  name: Generate Spark Flame Graphs
+  tasks:
+  - name: Copy up perf-map JARs
+    copy: src={{ item }} dest=/tmp/ owner=root mode=0777
+    with_items:
+      - files/attach-main.jar
+      - files/libperfmap.so
+      - files/stackcollapse-perf.pl
+      - files/flamegraph.pl
+    become_user: root
+  - name: Getting PIDs from pattern
+    shell: PS_OUTPUT="$(ps aux)"; echo "$PS_OUTPUT" |grep {{ pattern }} | grep -v bash | awk '{ print $2 }'| awk -vORS=, '{ print $1 }' | sed 's/,$/\n/'
+    register: pid
+  - name: Printing PIDs
+    debug: msg="pid is {{pid.stdout}}"
+  - name: Getting PIDs from pattern (in multi-line form)
+    shell: PS_OUTPUT="$(ps aux)"; echo "$PS_OUTPUT" |grep {{ pattern }} | grep -v bash | awk '{ print $2 }'
+    register: pid_lines
+  - name: Running perf
+    command: perf record {{ perf_options }} -o /tmp/perf.data --pid={{ pid.stdout }} sleep {{ perf_time }}
+    when: pid.stdout_lines > 0
+    become_user: root
+  - name: Attaching perf-map-agent
+    shell: cd /tmp ; su -c 'java -cp /tmp/attach-main.jar:$JAVA_HOME/lib/tools.jar net.virtualvoid.perf.AttachOnce {{ item }}' yarn
+    with_items: "{{ pid_lines.stdout_lines }}"
+    become: true
+    become_user: root
+  - name: Fixing perf-map permissions
+    file: path=/tmp/perf-{{ item }}.map owner=root group=root mode=0644
+    with_items: "{{ pid_lines.stdout_lines }}"
+    become: true
+    become_user: root
+  - name: Creating perf script output
+    shell: cd /tmp ; perf script > perf-with-symbols
+    become: true
+    become_user: root
+  - name: Generating flamegraphs  
+    shell: cat /tmp/perf-with-symbols | /tmp/stackcollapse-perf.pl | /tmp/flamegraph.pl --color=java --hash > /tmp/flamegraph.svg
+  - name: Changing perf-map permissions for next run
+    file: path=/tmp/perf-{{ item }}.map owner=yarn group=yarn mode=0644
+    with_items: "{{ pid_lines.stdout_lines }}"
+    become: true
+    become_user: root
+  - name: Fetching perf output
+    fetch: src=/tmp/flamegraph.svg dest=./flamegraphs
+
+  
