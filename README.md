@@ -2,7 +2,7 @@
 
 "6:58 are you sure where my Spark is?"
 
-This is _very_ rough. But it's a starting point.
+This is _very_ rough way of generating flame graphs from Spark executors. But it's a starting point.
 
 * ansible-playbook -i inventory.ini spark-flame.playbook  --extra-vars 'pattern=[YARN_APP_ID]'
 
